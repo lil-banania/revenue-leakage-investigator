@@ -1,0 +1,238 @@
+{
+  "cases": [
+    {
+      "id": "nominal_seed_11",
+      "stratum": "nominal",
+      "period": "2026-05",
+      "env": {"SIM_SEED": "11"},
+      "expected": {"min_findings": 4, "min_issue_types": 4}
+    },
+    {
+      "id": "nominal_seed_21",
+      "stratum": "nominal",
+      "period": "2026-05",
+      "env": {"SIM_SEED": "21"},
+      "expected": {"min_findings": 4, "min_issue_types": 4}
+    },
+    {
+      "id": "nominal_seed_31",
+      "stratum": "nominal",
+      "period": "2026-05",
+      "env": {"SIM_SEED": "31"},
+      "expected": {"min_findings": 4, "min_issue_types": 4}
+    },
+    {
+      "id": "nominal_seed_41",
+      "stratum": "nominal",
+      "period": "2026-05",
+      "env": {"SIM_SEED": "41"},
+      "expected": {"min_findings": 4, "min_issue_types": 4}
+    },
+    {
+      "id": "nominal_seed_51",
+      "stratum": "nominal",
+      "period": "2026-05",
+      "env": {"SIM_SEED": "51"},
+      "expected": {"min_findings": 4, "min_issue_types": 4}
+    },
+    {
+      "id": "nominal_seed_61",
+      "stratum": "nominal",
+      "period": "2026-05",
+      "env": {"SIM_SEED": "61"},
+      "expected": {"min_findings": 4, "min_issue_types": 4}
+    },
+    {
+      "id": "edge_late_only",
+      "stratum": "edge",
+      "period": "2026-05",
+      "env": {
+        "SIM_SEED": "71",
+        "SCENARIO_RATE_LATE_EVENTS_UNBILLED": "0.95",
+        "SCENARIO_RATE_MISSING_DEDUP": "0.0",
+        "SCENARIO_RATE_TIER_STEP_ERROR": "0.0",
+        "SCENARIO_RATE_PRORATION_FAILED": "0.0",
+        "SCENARIO_RATE_DISCOUNT_NOT_EXPIRED": "0.0",
+        "SCENARIO_RATE_DUNNING_GAP": "0.0",
+        "SCENARIO_RATE_NO_ISSUE": "0.05"
+      },
+      "expected": {"min_findings": 1, "required_issues": ["late_events_unbilled"]}
+    },
+    {
+      "id": "edge_tier_only",
+      "stratum": "edge",
+      "period": "2026-05",
+      "env": {
+        "SIM_SEED": "72",
+        "SCENARIO_RATE_LATE_EVENTS_UNBILLED": "0.0",
+        "SCENARIO_RATE_MISSING_DEDUP": "0.0",
+        "SCENARIO_RATE_TIER_STEP_ERROR": "0.95",
+        "SCENARIO_RATE_PRORATION_FAILED": "0.0",
+        "SCENARIO_RATE_DISCOUNT_NOT_EXPIRED": "0.0",
+        "SCENARIO_RATE_DUNNING_GAP": "0.0",
+        "SCENARIO_RATE_NO_ISSUE": "0.05"
+      },
+      "expected": {"min_findings": 1, "required_issues": ["tier_step_error"]}
+    },
+    {
+      "id": "edge_dunning_only",
+      "stratum": "edge",
+      "period": "2026-05",
+      "env": {
+        "SIM_SEED": "73",
+        "SCENARIO_RATE_LATE_EVENTS_UNBILLED": "0.0",
+        "SCENARIO_RATE_MISSING_DEDUP": "0.0",
+        "SCENARIO_RATE_TIER_STEP_ERROR": "0.0",
+        "SCENARIO_RATE_PRORATION_FAILED": "0.0",
+        "SCENARIO_RATE_DISCOUNT_NOT_EXPIRED": "0.0",
+        "SCENARIO_RATE_DUNNING_GAP": "0.95",
+        "SCENARIO_RATE_NO_ISSUE": "0.05"
+      },
+      "expected": {"min_findings": 1, "required_issues": ["dunning_gap"]}
+    },
+    {
+      "id": "edge_discount_only",
+      "stratum": "edge",
+      "period": "2026-05",
+      "env": {
+        "SIM_SEED": "74",
+        "SCENARIO_RATE_LATE_EVENTS_UNBILLED": "0.0",
+        "SCENARIO_RATE_MISSING_DEDUP": "0.0",
+        "SCENARIO_RATE_TIER_STEP_ERROR": "0.0",
+        "SCENARIO_RATE_PRORATION_FAILED": "0.0",
+        "SCENARIO_RATE_DISCOUNT_NOT_EXPIRED": "0.95",
+        "SCENARIO_RATE_DUNNING_GAP": "0.0",
+        "SCENARIO_RATE_NO_ISSUE": "0.05"
+      },
+      "expected": {"min_findings": 1, "required_issues": ["discount_not_expired"]}
+    },
+    {
+      "id": "edge_proration_only",
+      "stratum": "edge",
+      "period": "2026-05",
+      "env": {
+        "SIM_SEED": "75",
+        "SCENARIO_RATE_LATE_EVENTS_UNBILLED": "0.0",
+        "SCENARIO_RATE_MISSING_DEDUP": "0.0",
+        "SCENARIO_RATE_TIER_STEP_ERROR": "0.0",
+        "SCENARIO_RATE_PRORATION_FAILED": "0.95",
+        "SCENARIO_RATE_DISCOUNT_NOT_EXPIRED": "0.0",
+        "SCENARIO_RATE_DUNNING_GAP": "0.0",
+        "SCENARIO_RATE_NO_ISSUE": "0.05"
+      },
+      "expected": {"min_findings": 1, "required_issues": ["proration_failed"]}
+    },
+    {
+      "id": "edge_mixed_low_noise",
+      "stratum": "edge",
+      "period": "2026-05",
+      "env": {
+        "SIM_SEED": "76",
+        "SCENARIO_RATE_LATE_EVENTS_UNBILLED": "0.20",
+        "SCENARIO_RATE_MISSING_DEDUP": "0.20",
+        "SCENARIO_RATE_TIER_STEP_ERROR": "0.20",
+        "SCENARIO_RATE_PRORATION_FAILED": "0.20",
+        "SCENARIO_RATE_DISCOUNT_NOT_EXPIRED": "0.20",
+        "SCENARIO_RATE_DUNNING_GAP": "0.0",
+        "SCENARIO_RATE_NO_ISSUE": "0.0"
+      },
+      "expected": {"min_findings": 1, "min_issue_types": 3}
+    },
+    {
+      "id": "no_leak_seed_81",
+      "stratum": "no_leak",
+      "period": "2026-05",
+      "env": {
+        "SIM_SEED": "81",
+        "SCENARIO_RATE_LATE_EVENTS_UNBILLED": "0.0",
+        "SCENARIO_RATE_MISSING_DEDUP": "0.0",
+        "SCENARIO_RATE_TIER_STEP_ERROR": "0.0",
+        "SCENARIO_RATE_PRORATION_FAILED": "0.0",
+        "SCENARIO_RATE_DISCOUNT_NOT_EXPIRED": "0.0",
+        "SCENARIO_RATE_DUNNING_GAP": "0.0",
+        "SCENARIO_RATE_NO_ISSUE": "1.0"
+      },
+      "expected": {"no_leak": true}
+    },
+    {
+      "id": "no_leak_seed_82",
+      "stratum": "no_leak",
+      "period": "2026-05",
+      "env": {
+        "SIM_SEED": "82",
+        "SCENARIO_RATE_LATE_EVENTS_UNBILLED": "0.0",
+        "SCENARIO_RATE_MISSING_DEDUP": "0.0",
+        "SCENARIO_RATE_TIER_STEP_ERROR": "0.0",
+        "SCENARIO_RATE_PRORATION_FAILED": "0.0",
+        "SCENARIO_RATE_DISCOUNT_NOT_EXPIRED": "0.0",
+        "SCENARIO_RATE_DUNNING_GAP": "0.0",
+        "SCENARIO_RATE_NO_ISSUE": "1.0"
+      },
+      "expected": {"no_leak": true}
+    },
+    {
+      "id": "trap_duplicate_only_1",
+      "stratum": "trap",
+      "period": "2026-05",
+      "env": {
+        "SIM_SEED": "91",
+        "SCENARIO_RATE_LATE_EVENTS_UNBILLED": "0.0",
+        "SCENARIO_RATE_MISSING_DEDUP": "0.95",
+        "SCENARIO_RATE_TIER_STEP_ERROR": "0.0",
+        "SCENARIO_RATE_PRORATION_FAILED": "0.0",
+        "SCENARIO_RATE_DISCOUNT_NOT_EXPIRED": "0.0",
+        "SCENARIO_RATE_DUNNING_GAP": "0.0",
+        "SCENARIO_RATE_NO_ISSUE": "0.05"
+      },
+      "expected": {"min_findings": 1, "required_issues": ["missing_dedup"]}
+    },
+    {
+      "id": "trap_duplicate_only_2",
+      "stratum": "trap",
+      "period": "2026-05",
+      "env": {
+        "SIM_SEED": "92",
+        "SCENARIO_RATE_LATE_EVENTS_UNBILLED": "0.0",
+        "SCENARIO_RATE_MISSING_DEDUP": "0.90",
+        "SCENARIO_RATE_TIER_STEP_ERROR": "0.0",
+        "SCENARIO_RATE_PRORATION_FAILED": "0.0",
+        "SCENARIO_RATE_DISCOUNT_NOT_EXPIRED": "0.0",
+        "SCENARIO_RATE_DUNNING_GAP": "0.0",
+        "SCENARIO_RATE_NO_ISSUE": "0.10"
+      },
+      "expected": {"min_findings": 1, "required_issues": ["missing_dedup"]}
+    },
+    {
+      "id": "trap_duplicate_only_3",
+      "stratum": "trap",
+      "period": "2026-05",
+      "env": {
+        "SIM_SEED": "93",
+        "SCENARIO_RATE_LATE_EVENTS_UNBILLED": "0.0",
+        "SCENARIO_RATE_MISSING_DEDUP": "0.85",
+        "SCENARIO_RATE_TIER_STEP_ERROR": "0.0",
+        "SCENARIO_RATE_PRORATION_FAILED": "0.0",
+        "SCENARIO_RATE_DISCOUNT_NOT_EXPIRED": "0.0",
+        "SCENARIO_RATE_DUNNING_GAP": "0.0",
+        "SCENARIO_RATE_NO_ISSUE": "0.15"
+      },
+      "expected": {"min_findings": 1, "required_issues": ["missing_dedup"]}
+    },
+    {
+      "id": "trap_duplicate_only_4",
+      "stratum": "trap",
+      "period": "2026-05",
+      "env": {
+        "SIM_SEED": "94",
+        "SCENARIO_RATE_LATE_EVENTS_UNBILLED": "0.0",
+        "SCENARIO_RATE_MISSING_DEDUP": "0.80",
+        "SCENARIO_RATE_TIER_STEP_ERROR": "0.0",
+        "SCENARIO_RATE_PRORATION_FAILED": "0.0",
+        "SCENARIO_RATE_DISCOUNT_NOT_EXPIRED": "0.0",
+        "SCENARIO_RATE_DUNNING_GAP": "0.0",
+        "SCENARIO_RATE_NO_ISSUE": "0.20"
+      },
+      "expected": {"min_findings": 1, "required_issues": ["missing_dedup"]}
+    }
+  ]
+}
