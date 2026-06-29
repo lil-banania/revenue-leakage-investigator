@@ -5,5 +5,8 @@ langgraph>=0.2
 # LLM explainer (optional: templated summary used if absent)
 anthropic>=0.40
 
+# Demo UI
+streamlit
+
 # Dev
 pytest>=8.0
