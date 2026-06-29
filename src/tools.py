@@ -96,18 +96,33 @@ def reconcile_account(account_id: str, events: List[dict], invoice: dict) -> Fin
     )
 
 
-def run_reconciliation(data_dir: str = "data") -> List[Finding]:
+def run_reconciliation(data_dir: str = "data", state: dict | None = None) -> List[Finding]:
     del data_dir  # compatibility; source now provides data.
     period = os.getenv("PERIOD", "2026-05")
     source = get_billing_source()
+    recorder = state.get("trace_recorder") if state else None
 
     try:
+        if recorder:
+            with recorder.span(
+                name="tool.run_reconciliation",
+                kind="tool",
+                inputs={"period": period, "source": os.getenv("BILLING_SOURCE", "sim")},
+            ) as span:
+                accounts = source.list_accounts(period)
+                findings = _reconcile_accounts(source, accounts, period)
+                span.outputs = {"accounts": len(accounts), "finding_count": len(findings)}
+                return findings
         accounts = source.list_accounts(period)
     except NotImplementedError as exc:
         # Clear error surfaced to users while keeping the agent run alive.
         print(f"[billing-source] {exc}")
         return []
 
+    return _reconcile_accounts(source, accounts, period)
+
+
+def _reconcile_accounts(source, accounts, period: str) -> List[Finding]:
     findings: List[Finding] = []
     for account in accounts:
         raw_events = source.get_events(account.account_id, period)

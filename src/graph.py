@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from .state import InvestigationState, new_state
 from .agents import detector_agent, explainer_agent
+from .tracing import TraceRecorder
 
 
 def _route_after_detector(state: InvestigationState) -> str:
@@ -44,6 +45,8 @@ def _run_manual(period: str) -> InvestigationState:
 
 def investigate(period: str = "2026-05", use_langgraph: bool | None = None) -> InvestigationState:
     """Run the investigation. Tries LangGraph, falls back to manual orchestration."""
+    recorder = TraceRecorder(period=period)
+
     if use_langgraph is None:
         try:
             import langgraph  # noqa: F401
@@ -51,7 +54,16 @@ def investigate(period: str = "2026-05", use_langgraph: bool | None = None) -> I
         except Exception:
             use_langgraph = False
 
+    state = new_state(period)
+    state["trace_recorder"] = recorder
     if use_langgraph:
         app = build_langgraph()
-        return app.invoke(new_state(period))
-    return _run_manual(period)
+        out = app.invoke(state)
+    else:
+        out = state
+        out = detector_agent(out)
+        if _route_after_detector(out) == "explainer":
+            out = explainer_agent(out)
+    trace_path = recorder.finalize(out)
+    out["trace_path"] = trace_path
+    return out

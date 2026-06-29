@@ -22,7 +22,17 @@ def detector_agent(state: InvestigationState) -> InvestigationState:
         return state
     guardrails.record_visit(state, "detector")
 
-    findings = tools.run_reconciliation(os.getenv("DATA_DIR", "data"))
+    recorder = state.get("trace_recorder")
+    if recorder:
+        with recorder.span(
+            name="agent.detector",
+            kind="agent",
+            inputs={"period": state["period"], "visited": list(state.get("visited", []))},
+        ) as span:
+            findings = tools.run_reconciliation(os.getenv("DATA_DIR", "data"), state=state)
+            span.outputs = {"finding_count": len(findings)}
+    else:
+        findings = tools.run_reconciliation(os.getenv("DATA_DIR", "data"), state=state)
     errs = guardrails.validate_findings(findings)
     state["errors"].extend(errs)
 
@@ -52,6 +62,40 @@ def explainer_agent(state: InvestigationState) -> InvestigationState:
 
     if not guardrails.consistency_check(state):
         state["errors"].append("consistency check failed: totals do not reconcile")
+
+    recorder = state.get("trace_recorder")
+    if recorder:
+        with recorder.span(
+            name="agent.explainer",
+            kind="agent",
+            inputs={
+                "finding_count": len(state.get("findings", [])),
+                "offline": not bool(os.getenv("ANTHROPIC_API_KEY")),
+            },
+        ) as span:
+            if not os.getenv("ANTHROPIC_API_KEY"):
+                state["summary"] = "[offline] " + _template_summary(state)
+                span.outputs = {"mode": "offline_template", "summary_chars": len(state["summary"])}
+                return state
+            from anthropic import Anthropic
+            client = Anthropic()
+            findings_json = "\n".join(
+                f"- {f['account_id']}: {f['issue']}, leakage ${f['leakage_usd']:.2f} "
+                f"({f['evidence']})" for f in state["findings"]
+            )
+            prompt = (f"You are a revenue-assurance analyst. Summarize these reconciliation "
+                      f"findings for a finance lead in 4-6 sentences. Be specific about the "
+                      f"biggest leakage drivers and recommend one action.\n\n"
+                      f"Period: {state['period']}\nTotal net leakage: "
+                      f"${state['total_leakage_usd']:.2f}\nFindings:\n{findings_json}")
+            msg = client.messages.create(
+                model=GEN_MODEL, max_tokens=500, messages=[{"role": "user", "content": prompt}]
+            )
+            state["summary"] = "".join(
+                b.text for b in msg.content if getattr(b, "type", "") == "text"
+            )
+            span.outputs = {"mode": "llm", "summary_chars": len(state["summary"])}
+            return state
 
     if not os.getenv("ANTHROPIC_API_KEY"):
         state["summary"] = "[offline] " + _template_summary(state)
