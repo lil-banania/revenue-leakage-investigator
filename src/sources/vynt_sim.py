@@ -1,6 +1,7 @@
 """Deterministic synthetic Vynt-like billing source (hybrid subscription + usage)."""
 from __future__ import annotations
 
+import os
 import random
 from datetime import datetime, timedelta
 from typing import Dict, List
@@ -58,6 +59,15 @@ class VyntSimulatorSource(BillingSource):
     def __init__(self, seed: int = 42):
         self.seed = seed
         self._cache: Dict[str, Dict[str, object]] = {}
+        self.scenario_rates = {
+            "proration_failed": float(os.getenv("SCENARIO_RATE_PRORATION_FAILED", "0.18")),
+            "discount_not_expired": float(os.getenv("SCENARIO_RATE_DISCOUNT_NOT_EXPIRED", "0.18")),
+            "dunning_gap": float(os.getenv("SCENARIO_RATE_DUNNING_GAP", "0.16")),
+            "late_events_unbilled": float(os.getenv("SCENARIO_RATE_LATE_EVENTS_UNBILLED", "0.18")),
+            "missing_dedup": float(os.getenv("SCENARIO_RATE_MISSING_DEDUP", "0.16")),
+            "tier_step_error": float(os.getenv("SCENARIO_RATE_TIER_STEP_ERROR", "0.14")),
+        }
+        self.no_issue_rate = float(os.getenv("SCENARIO_RATE_NO_ISSUE", "0.20"))
 
     def _build_period(self, period: str) -> Dict[str, object]:
         if period in self._cache:
@@ -72,6 +82,7 @@ class VyntSimulatorSource(BillingSource):
         ground_truth: List[dict] = []
 
         event_counter = 0
+        guaranteed = [name for name, rate in self.scenario_rates.items() if rate > 0.0]
         for i in range(20):
             account_id = f"acct_{i + 1:03d}"
             plan = rng.choices(["Starter", "Pro", "Scale"], weights=[0.5, 0.35, 0.15], k=1)[0]
@@ -100,15 +111,30 @@ class VyntSimulatorSource(BillingSource):
                 event_counter += 1
 
             invoiced_qty = true_qty
+            usage_amount_correct = tier_price_total(invoiced_qty)
+            subscription_amount = PLANS[plan]
             issue = None
-            roll = rng.random()
-            if roll < 0.20:
+
+            # Guarantee one sample per enabled scenario for evaluation stability.
+            if i < len(guaranteed):
+                scenario = guaranteed[i]
+            else:
+                weighted = []
+                for name, rate in self.scenario_rates.items():
+                    if rate > 0:
+                        weighted.extend([name] * max(1, int(rate * 100)))
+                weighted.extend(["none"] * max(1, int(self.no_issue_rate * 100)))
+                scenario = rng.choice(weighted) if weighted else "none"
+
+            usage_amount = usage_amount_correct
+            product_code = PRODUCT
+            if scenario == "missing_dedup":
                 dup = account_events[-1].model_copy()
                 dup.event_id = f"evt_{event_counter}"
                 account_events.append(dup)
                 event_counter += 1
-                issue = "duplicate_event"
-            elif roll < 0.45:
+                issue = "missing_dedup"
+            elif scenario == "late_events_unbilled":
                 late_q = rng.randint(20_000, 120_000)
                 account_events.append(
                     UsageEvent(
@@ -121,21 +147,29 @@ class VyntSimulatorSource(BillingSource):
                     )
                 )
                 event_counter += 1
-                true_qty += late_q
-                issue = "unreconciled_late_event"
-            elif roll < 0.60:
-                issue = "tier_misconfig"
-
-            subscription_amount = PLANS[plan]
-            if issue == "tier_misconfig":
+                issue = "late_events_unbilled"
+            elif scenario == "tier_step_error":
                 usage_amount = round(invoiced_qty * 0.0003, 2)
-            else:
-                usage_amount = tier_price_total(invoiced_qty)
+                issue = "tier_step_error"
+            elif scenario == "discount_not_expired":
+                discount_pct = rng.choice([0.15, 0.20, 0.25, 0.30])
+                usage_amount = round(usage_amount_correct * (1.0 - discount_pct), 2)
+                issue = "discount_not_expired"
+            elif scenario == "dunning_gap":
+                usage_amount = 0.0
+                issue = "dunning_gap"
+            elif scenario == "proration_failed":
+                proration_delta = rng.uniform(45.0, 180.0)
+                usage_amount = round(max(0.0, usage_amount_correct - proration_delta), 2)
+                issue = "proration_failed"
+
+            if issue:
+                product_code = f"{PRODUCT}#{issue}"
 
             invoices_by_account[account_id] = [
                 Invoice(
                     account_id=account_id,
-                    product_code=PRODUCT,
+                    product_code=product_code,
                     period=period,
                     invoiced_quantity=invoiced_qty,
                     invoiced_amount=round(subscription_amount + usage_amount, 2),

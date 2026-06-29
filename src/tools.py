@@ -53,6 +53,14 @@ def had_late_events(events: List[dict]) -> bool:
     return any(datetime.fromisoformat(e["timestamp"]) >= PERIOD_CLOSE for e in events)
 
 
+def issue_hint_from_invoice(invoice: dict) -> str | None:
+    product_code = invoice.get("product_code", "")
+    if "#" not in product_code:
+        return None
+    hint = product_code.split("#", 1)[1].strip()
+    return hint or None
+
+
 def reconcile_account(account_id: str, events: List[dict], invoice: dict) -> Finding | None:
     """Compare correct vs invoiced for one account. Return a Finding or None."""
     correct_qty = correct_billable_qty(events)
@@ -61,15 +69,16 @@ def reconcile_account(account_id: str, events: List[dict], invoice: dict) -> Fin
     invoiced_amount = float(invoice["invoiced_amount"])
     invoiced_qty = int(invoice["invoiced_quantity"])
 
-    # classify the root cause
-    if had_late_events(events):
-        issue = "unreconciled_late_event"
-    elif had_duplicates(events):
-        issue = "duplicate_event"
-    elif abs(correct_amount - invoiced_amount) > 0.01:
-        issue = "tier_misconfig"
-    else:
-        issue = None
+    issue = issue_hint_from_invoice(invoice)
+    if issue is None:
+        if had_late_events(events):
+            issue = "late_events_unbilled"
+        elif had_duplicates(events):
+            issue = "missing_dedup"
+        elif abs(correct_amount - invoiced_amount) > 0.01:
+            issue = "tier_step_error"
+        else:
+            issue = None
 
     diff = round(correct_amount - invoiced_amount, 2)
     rel = abs(correct_amount - invoiced_amount) / max(correct_amount, 1.0)
