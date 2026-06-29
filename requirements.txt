@@ -1,0 +1,9 @@
+# Core orchestration (production path). The project also runs WITHOUT this via the
+# dependency-free fallback orchestrator in src/graph.py.
+langgraph>=0.2
+
+# LLM explainer (optional: templated summary used if absent)
+anthropic>=0.40
+
+# Dev
+pytest>=8.0

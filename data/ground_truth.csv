@@ -1,0 +1,12 @@
+account_id,issue
+acct_002,unreconciled_late_event
+acct_003,unreconciled_late_event
+acct_006,tier_misconfig
+acct_010,unreconciled_late_event
+acct_011,duplicate_event
+acct_012,duplicate_event
+acct_015,duplicate_event
+acct_016,duplicate_event
+acct_018,unreconciled_late_event
+acct_019,tier_misconfig
+acct_020,duplicate_event
