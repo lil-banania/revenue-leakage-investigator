@@ -1,5 +1,7 @@
 # 🕵️ Revenue Leakage Investigator — 2-Agent System (LangGraph)
 
+![Eval](https://github.com/lil-banania/revenue-leakage-investigator/actions/workflows/eval.yml/badge.svg)
+
 A scoped multi-agent system that finds revenue leakage in usage-based billing by
 reconciling raw metering events against issued invoices. Built as an AI-PM portfolio
 piece to demonstrate **multi-agent orchestration done responsibly** — structured
