@@ -10,7 +10,9 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+from src.investigator import investigate_alert
 from src.graph import investigate
+from src.schemas import AnomalyAlert
 
 
 def main():
@@ -30,6 +32,22 @@ def main():
     for f in sorted(state["findings"], key=lambda x: x["leakage_usd"], reverse=True):
         print(f"  {f['account_id']:<12} {f['issue']:<24} "
               f"${f['leakage_usd']:>10.2f}   {f['evidence']}")
+
+    if state["findings"]:
+        print("\n--- TIER 2 INVESTIGATION REPORTS ---")
+        for f in sorted(state["findings"], key=lambda x: x["leakage_usd"], reverse=True):
+            alert = AnomalyAlert(
+                account_id=f["account_id"],
+                period=state["period"],
+                discrepancy_amount=float(f["leakage_usd"]),
+            )
+            report = investigate_alert(alert)
+            print(
+                f"  {report.status:<24} {f['account_id']} "
+                f"cause={report.root_cause_category.value:<26} "
+                f"confidence={report.confidence_score:.2f} "
+                f"steps={len(report.evidence_chain)}"
+            )
 
     print("\n--- SUMMARY ---")
     print(state["summary"])

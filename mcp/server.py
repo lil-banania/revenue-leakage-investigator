@@ -17,6 +17,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from config import get_billing_source
+from src import investigator_tools
 from src import tools as recon_tools
 
 SERVER_INFO = {"name": "revenue-leakage-mcp", "version": "0.1.0"}
@@ -116,6 +117,59 @@ def _tool_specs() -> List[Dict[str, Any]]:
                 "additionalProperties": False,
             },
         },
+        {
+            "name": "query_raw_events",
+            "description": "Tier 2 atomic tool: query account raw-event aggregates by event type.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "period": {"type": "string", "pattern": r"^\d{4}-\d{2}$"},
+                    "account_id": {"type": "string", "pattern": r"^acct_\d{3}$"},
+                    "event_type": {"type": "string", "enum": ["all", "late", "duplicate"]},
+                },
+                "required": ["period", "account_id"],
+                "additionalProperties": False,
+            },
+        },
+        {
+            "name": "get_invoice_lines",
+            "description": "Tier 2 atomic tool: get invoice line components for one account.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "period": {"type": "string", "pattern": r"^\d{4}-\d{2}$"},
+                    "account_id": {"type": "string", "pattern": r"^acct_\d{3}$"},
+                },
+                "required": ["period", "account_id"],
+                "additionalProperties": False,
+            },
+        },
+        {
+            "name": "get_custom_pricing_rules",
+            "description": "Tier 2 atomic tool: retrieve contract pricing overrides for an account.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "account_id": {"type": "string", "pattern": r"^acct_\d{3}$"},
+                    "query": {"type": "string"},
+                },
+                "required": ["account_id"],
+                "additionalProperties": False,
+            },
+        },
+        {
+            "name": "compare_amounts",
+            "description": "Tier 2 atomic tool: deterministic amount comparison (only math path).",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "a": {"type": "number"},
+                    "b": {"type": "number"},
+                },
+                "required": ["a", "b"],
+                "additionalProperties": False,
+            },
+        },
     ]
 
 
@@ -202,6 +256,37 @@ def _call_tool(name: str, args: Dict[str, Any]) -> Dict[str, Any]:
             "finding": finding,
             "status": "flagged" if finding else "clean",
         }
+
+    if name == "query_raw_events":
+        period = _validate_period(args.get("period"))
+        account_id = _validate_account_id(args.get("account_id"))
+        event_type = args.get("event_type", "all")
+        if event_type not in {"all", "late", "duplicate"}:
+            raise ValueError("`event_type` must be one of: all, late, duplicate.")
+        return investigator_tools.query_raw_events(
+            account_id=account_id,
+            period=period,
+            event_type=event_type,
+        )
+
+    if name == "get_invoice_lines":
+        period = _validate_period(args.get("period"))
+        account_id = _validate_account_id(args.get("account_id"))
+        return investigator_tools.get_invoice_lines(account_id=account_id, period=period)
+
+    if name == "get_custom_pricing_rules":
+        account_id = _validate_account_id(args.get("account_id"))
+        query = args.get("query", "pricing override")
+        if not isinstance(query, str):
+            raise ValueError("`query` must be a string.")
+        return investigator_tools.get_custom_pricing_rules(account_id=account_id, query=query)
+
+    if name == "compare_amounts":
+        a = args.get("a")
+        b = args.get("b")
+        if not isinstance(a, (int, float)) or not isinstance(b, (int, float)):
+            raise ValueError("`a` and `b` must be numeric.")
+        return investigator_tools.compare_amounts(float(a), float(b))
 
     raise ValueError(f"Unknown tool '{name}'.")
 

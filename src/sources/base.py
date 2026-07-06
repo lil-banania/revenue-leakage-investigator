@@ -32,6 +32,20 @@ class Invoice(BaseModel):
     subscription_amount: float = Field(default=0.0, ge=0.0)
 
 
+class ContractDocument(BaseModel):
+    account_id: str
+    document_id: str
+    title: str
+    content_type: str  # json | text
+    body: str
+
+
+class GroundTruthEntry(BaseModel):
+    account_id: str
+    issue: str
+    root_cause: str
+
+
 class BillingSource(ABC):
     """Source abstraction so agent logic is independent from data origin."""
 
@@ -45,4 +59,11 @@ class BillingSource(ABC):
 
     @abstractmethod
     def get_invoices(self, account_id: str, period: str) -> List[Invoice]:
+        raise NotImplementedError
+
+    # Optional extension points used by Tier 2 investigator.
+    def get_contract_documents(self, account_id: str) -> List[ContractDocument]:
+        raise NotImplementedError
+
+    def get_ground_truth(self, period: str) -> List[GroundTruthEntry]:
         raise NotImplementedError
