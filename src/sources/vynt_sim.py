@@ -6,7 +6,14 @@ import random
 from datetime import datetime, timedelta
 from typing import Dict, List
 
-from .base import Account, BillingSource, Invoice, UsageEvent
+from .base import (
+    Account,
+    BillingSource,
+    ContractDocument,
+    GroundTruthEntry,
+    Invoice,
+    UsageEvent,
+)
 
 PRODUCT = "platform"
 TIERS = [
@@ -79,7 +86,8 @@ class VyntSimulatorSource(BillingSource):
         accounts: List[Account] = []
         events_by_account: Dict[str, List[UsageEvent]] = {}
         invoices_by_account: Dict[str, List[Invoice]] = {}
-        ground_truth: List[dict] = []
+        ground_truth: List[GroundTruthEntry] = []
+        contract_documents: Dict[str, List[ContractDocument]] = {}
 
         event_counter = 0
         guaranteed = [name for name, rate in self.scenario_rates.items() if rate > 0.0]
@@ -88,6 +96,7 @@ class VyntSimulatorSource(BillingSource):
             plan = rng.choices(["Starter", "Pro", "Scale"], weights=[0.5, 0.35, 0.15], k=1)[0]
             account = Account(account_id=account_id, name=ACCOUNT_NAMES[i], plan=plan)
             accounts.append(account)
+            contract_documents[account_id] = []
 
             true_qty = rng.randint(50_000, 3_000_000)
             batches = rng.randint(3, 6)
@@ -128,12 +137,14 @@ class VyntSimulatorSource(BillingSource):
 
             usage_amount = usage_amount_correct
             product_code = PRODUCT
+            root_cause = None
             if scenario == "missing_dedup":
                 dup = account_events[-1].model_copy()
                 dup.event_id = f"evt_{event_counter}"
                 account_events.append(dup)
                 event_counter += 1
                 issue = "missing_dedup"
+                root_cause = "duplicate_events"
             elif scenario == "late_events_unbilled":
                 late_q = rng.randint(20_000, 120_000)
                 account_events.append(
@@ -148,20 +159,63 @@ class VyntSimulatorSource(BillingSource):
                 )
                 event_counter += 1
                 issue = "late_events_unbilled"
+                root_cause = "late_event_arrival"
             elif scenario == "tier_step_error":
                 usage_amount = round(invoiced_qty * 0.0003, 2)
                 issue = "tier_step_error"
+                root_cause = "tier_misalignment"
             elif scenario == "discount_not_expired":
                 discount_pct = rng.choice([0.15, 0.20, 0.25, 0.30])
                 usage_amount = round(usage_amount_correct * (1.0 - discount_pct), 2)
                 issue = "discount_not_expired"
+                root_cause = "contract_override_missed"
+                contract_documents[account_id].append(
+                    ContractDocument(
+                        account_id=account_id,
+                        document_id=f"ctr-{account_id}-discount",
+                        title="Pricing Addendum - Renewal Discount",
+                        content_type="json",
+                        body=(
+                            f'{{"account_id":"{account_id}","override_type":"discount_percent",'
+                            f'"discount_percent":{discount_pct},"effective_period":"{period}"}}'
+                        ),
+                    )
+                )
             elif scenario == "dunning_gap":
                 usage_amount = 0.0
                 issue = "dunning_gap"
+                root_cause = "contract_override_missed"
+                contract_documents[account_id].append(
+                    ContractDocument(
+                        account_id=account_id,
+                        document_id=f"ctr-{account_id}-dunning",
+                        title="Collections Workflow SLA",
+                        content_type="text",
+                        body=(
+                            "Failed payment policy: retry usage charge collection over 3 attempts "
+                            "before write-off. Account remains billable for metered usage."
+                        ),
+                    )
+                )
             elif scenario == "proration_failed":
                 proration_delta = rng.uniform(45.0, 180.0)
                 usage_amount = round(max(0.0, usage_amount_correct - proration_delta), 2)
                 issue = "proration_failed"
+                root_cause = "contract_override_missed"
+                custom_floor = max(0.00025, round(rng.uniform(0.00035, 0.0007), 6))
+                contract_documents[account_id].append(
+                    ContractDocument(
+                        account_id=account_id,
+                        document_id=f"ctr-{account_id}-tier-floor",
+                        title="Custom Tier Override",
+                        content_type="json",
+                        body=(
+                            f'{{"account_id":"{account_id}","override_type":"custom_tier",'
+                            f'"tier_start":1000000,"custom_unit_price":{custom_floor},'
+                            f'"effective_period":"{period}"}}'
+                        ),
+                    )
+                )
 
             if issue:
                 product_code = f"{PRODUCT}#{issue}"
@@ -179,13 +233,20 @@ class VyntSimulatorSource(BillingSource):
             events_by_account[account_id] = account_events
 
             if issue:
-                ground_truth.append({"account_id": account_id, "issue": issue})
+                ground_truth.append(
+                    GroundTruthEntry(
+                        account_id=account_id,
+                        issue=issue,
+                        root_cause=root_cause or "contract_override_missed",
+                    )
+                )
 
         payload = {
             "accounts": accounts,
             "events": events_by_account,
             "invoices": invoices_by_account,
             "ground_truth": ground_truth,
+            "contracts": contract_documents,
         }
         self._cache[period] = payload
         return payload
@@ -201,5 +262,11 @@ class VyntSimulatorSource(BillingSource):
         invoices = self._build_period(period)["invoices"]  # type: ignore[assignment]
         return list(invoices.get(account_id, []))
 
+    def get_contract_documents(self, account_id: str) -> List[ContractDocument]:
+        payload = self._build_period(os.getenv("PERIOD", "2026-05"))
+        contracts = payload["contracts"]  # type: ignore[assignment]
+        return list(contracts.get(account_id, []))
+
     def get_ground_truth(self, period: str) -> List[dict]:
-        return list(self._build_period(period)["ground_truth"])  # type: ignore[return-value]
+        rows: List[GroundTruthEntry] = list(self._build_period(period)["ground_truth"])  # type: ignore[assignment]
+        return [row.model_dump() for row in rows]
