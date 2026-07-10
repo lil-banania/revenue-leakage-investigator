@@ -138,7 +138,7 @@ def main() -> None:
         seed = st.number_input("Seed", min_value=1, max_value=999999, value=42, step=1)
         run_clicked = st.button("Run investigation", type="primary", use_container_width=True)
         st.markdown("---")
-        st.markdown("[DECISIONS.md](./DECISIONS.md)")
+        st.markdown("[DECISIONS.md](https://github.com/lil-banania/revenue-leakage-investigator/blob/main/DECISIONS.md)")
         st.markdown("[GitHub](https://github.com/lil-banania/revenue-leakage-investigator)")
         if os.getenv("LANGFUSE_PUBLIC_KEY") and os.getenv("LANGFUSE_SECRET_KEY"):
             st.caption("Langfuse export: configured")
