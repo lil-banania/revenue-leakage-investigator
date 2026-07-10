@@ -123,7 +123,7 @@ def main() -> None:
     st.set_page_config(page_title="Revenue Leakage Investigator", layout="wide")
     st.title("Revenue Leakage Investigator")
     st.markdown(
-        "### Donnees synthetiques iso-Vynt, discordances injectees - aucune donnee client reelle."
+        "### Synthetic Vynt-like data with injected discrepancies — no real customer data."
     )
 
     with st.sidebar:
@@ -220,8 +220,14 @@ def main() -> None:
         c2.metric("Recall", f"{recall:.2f}")
         c3.metric("F1", f"{f1:.2f}")
         s1, s2 = st.columns(2)
-        s1.success("L2 trajectory valid") if l2_ok else s1.error("L2 trajectory invalid")
-        s2.success("L3 step/guardrails clean") if l3_ok else s2.error("L3 step/guardrails failed")
+        if l2_ok:
+            s1.success("L2 trajectory valid")
+        else:
+            s1.error("L2 trajectory invalid")
+        if l3_ok:
+            s2.success("L3 step/guardrails clean")
+        else:
+            s2.error("L3 step/guardrails failed")
 
         matched = sorted(detected & gt)
         missed = sorted(gt - detected)
